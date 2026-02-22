@@ -20,8 +20,7 @@ local StringType = {
 	args = {},
 } :: Type
 
-local Kind
-
+local Kind = {} :: { [string]: (kind: Type) -> string }
 Kind = {
 	["table"] = function(kind: Type)
 		local fill: { string } = {}
@@ -30,6 +29,16 @@ Kind = {
 		end
 
 		return `\{ {table.concat(fill,', ')} \}`
+	end,
+	
+	["list"] = function(kind: Type)
+		local fill: { string } = {}
+		for i, name in assert(kind.slots) do
+			local typ = kind.args[name]
+			table.insert(fill, `{name}: {Kind[typ.kind](typ)}`)
+		end
+
+		return `({table.concat(fill,', ')})`
 	end,
 
 	["union"] = function(kind: Type)
@@ -51,25 +60,13 @@ Kind = {
 
 	["function"] = function(kind: Type)
 		-- make suggestion fill in type names...
-		local retcode = assert(kind.retcode)
-		local slots = assert(kind.slots)
-		local fill: { string } = {}
-		for i = 1, retcode do
-			local name = slots[i]
-			local typ = kind.args[name]
-			table.insert(fill, `{name}: {Kind[typ.kind](typ)}`)
-		end
-
-		local ret: { string } = {}
-		for i = retcode + 1, #slots do
-			local name = slots[i]
-			local typ = kind.args[name]
-			table.insert(ret, `{name}: {Kind[typ.kind](typ)}`)
-		end
-
-		return `({table.concat(fill, ', ')}) -> ({table.concat(ret, ', ')})`
+		local list = assert(kind.list)
+		local funcArgs = list[1]
+		local funcRets = list[2]
+		
+		return `{Kind.list(funcArgs)} -> {Kind.list(funcRets)}`
 	end,
-} :: { [string]: (kind: Type) -> string }
+}
 
 local function konsoleAutocomplete(
 	src: string,
@@ -78,7 +75,7 @@ local function konsoleAutocomplete(
 	local lexer = Lexer(src)
 	local typ: Type = Parse(lexer, {
 		handleLiteral = function(state: Environment, literal: any)
-			return env.args[literal] or StringType
+			return nil -- StringType
 		end,
 
 		handleNumber = function(state: Environment, literal: any)
@@ -95,27 +92,37 @@ local function konsoleAutocomplete(
 
 		handleProp = function(state: Environment, base: Type, key: string): any
 			if base then
-				return base.args[key]
+				return base.args[key] or base
 			else
 				return nil
 			end
 		end,
 
-		handleCall = function(state: Environment, base: Type, args: { any }): any
+		handleCall = function(state: Environment, base: Type, args: { any }, complete: boolean): any
 			if not base then
 				return
 			elseif base.kind ~= "function" then
 				return
 			end
 			
-			local retcode = assert(base.retcode)
-			local slots = assert(base.slots)
-			local current = #args
-			return base
+			local list = assert(base.list)
+			local funcArgs = list[1]
+			local funcRets = list[2]
+			
+			local slots = assert(funcArgs.slots)
+			if #slots >= #args and complete then
+				return funcRets
+			else
+				return funcArgs
+			end
 		end,
 
 		handleAssign = function(state: Environment, base: any, key: any, value: any)
 			return value
+		end,
+		
+		handleGlobal = function(state: Environment, key: string)
+			return env.args[key]
 		end,
 
 		handleGlobalAssign = function(state: any, key: any, value: any)

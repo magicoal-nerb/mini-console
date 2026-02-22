@@ -25,11 +25,12 @@ local LuaPrecedence = table.freeze({
 export type Environment = {
 	handleLiteral: (env: Environment, literal: string) -> any,
 	handleNumber: (env: Environment, literal: string) -> any,
+	handleGlobal: (env: Environment, literal: string) -> any,
 	
 	handleUnary: (env: Environment, any) -> any,
 	handleBinary: (env: Environment, op: string, left: any, right: any) -> any,
+	handleCall: (env: Environment, base: any, args: { any }, complete: boolean) -> (any),
 	handleProp: (env: Environment, base: any, key: any) -> (),
-	handleCall: (env: Environment, base: any, args: { any }) -> (any),
 	
 	handleAssign: (env: Environment, base: any, key: any, value: any) -> (),
 	handleGlobalAssign: (env: Environment, key: any, value: any) -> (),
@@ -48,8 +49,9 @@ local function parsePrefixExpression(env: Environment, lexer: Lexer): any
 		return nil
 	end
 
-	local literal = lexer:expectLiteral()
-	return env.handleLiteral(env, literal :: string)
+	local literal = lexer:expectLiteral() :: string
+	return env.handleGlobal(env, literal)
+		or env.handleLiteral(env, literal)
 end
 
 local function parseOperator(lexer: Lexer): string?
@@ -62,6 +64,10 @@ end
 
 local function parseTable(env: Environment, lexer: Lexer): any
 	local tab = {} :: any
+	if lexer:expect('}') then
+		return tab
+	end
+	
 	repeat
 		if lexer:peek() == '=' then
 			-- index
@@ -77,7 +83,7 @@ local function parseTable(env: Environment, lexer: Lexer): any
 			-- separated
 			local eval = parseStatement(env, lexer)
 			if eval then
-				env.handleAssign(env, tab, #tab + 1, parseStatement(env, lexer))
+				env.handleAssign(env, tab, #tab + 1, eval)
 			end
 		end
 	until lexer:eof()
@@ -103,8 +109,6 @@ local function parseExpression(env: Environment, lexer: Lexer, maybeLimit: numbe
 	while op and LuaPrecedence[op] > limit do
 		local operator = lexer:consume()
 		local right = parseExpression(env, lexer, LuaPrecedence[op])
-		
-		-- do operation(yes i don't care)
 		expr = env.handleBinary(env, operator, expr, right)
 		op = parseOperator(lexer)
 	end
@@ -131,7 +135,7 @@ function parseStatement(env: Environment, lexer: Lexer): any
 			lexer:expect(']')
 		elseif lexer:expect('(') then
 			if lexer:expect(')') then
-				expression = env.handleCall(env, expression, {})
+				expression = env.handleCall(env, expression, {}, true)
 				continue
 			end
 
@@ -140,8 +144,12 @@ function parseStatement(env: Environment, lexer: Lexer): any
 				table.insert(args, parseStatement(env, lexer))
 			until not lexer:expect(',')
 			
-			lexer:expect(')')
-			expression = env.handleCall(env, expression, args)
+			expression = env.handleCall(
+				env,
+				expression,
+				args,
+				lexer:expect(')')
+			)
 		else
 			break
 		end

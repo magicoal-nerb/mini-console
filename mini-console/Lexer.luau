@@ -39,6 +39,7 @@ export type Lexer = typeof(setmetatable({} :: {
 }, Lexer))
 
 function Lexer.new(lexemes: { string })
+	local length  
 	return setmetatable({
 		cursor = 1,
 		length = #lexemes,
@@ -86,7 +87,7 @@ end
 function Lexer.expectLiteral(self: Lexer): string?
 	-- we expect a literal
 	local current = self.lexemes[self.cursor]
-	if isAlphanumeric(string.byte(current, 1)) then
+	if not self:eof() and isAlphanumeric(string.byte(current, 1)) then
 		self.cursor += 1
 		return current
 	end
@@ -122,7 +123,7 @@ end
 
 function Lexer.eof(self: Lexer): boolean
 	-- are we at the end yet?
-	return self.cursor >= self.length
+	return self.cursor > self.length
 end
 
 function Lexer.peek(self: Lexer): string
@@ -150,7 +151,12 @@ local function createLexer(content: string)
 			while cursor < length and buffer.readu8(data, cursor) ~= string.byte('"') do
 				cursor += 1
 			end
-
+			
+			if start == cursor then
+				-- end of file
+				break
+			end
+			
 			table.insert(lexemes, content:sub(start + 1, cursor))
 			cursor += 1
 		elseif isNumeric(byte) then

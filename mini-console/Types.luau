@@ -6,7 +6,7 @@ type Lexer = Lexer.Lexer
 
 export type TypeDatabase = { [string]: Type }
 export type Type = {
-	kind: "table" | "array" | "function" | "builtin" | "union",
+	kind: "table" | "array" | "function" | "builtin" | "union" | "list",
 	args: { [string]: Type },
 	name: string,
 	
@@ -14,6 +14,31 @@ export type Type = {
 	slots: { string }?,
 	list: { Type }?,
 }
+
+local function parseList(lexer: Lexer, types: TypeDatabase): Type
+	local retcode = {
+		kind = "list",
+		name = "list",
+		slots = {},
+		args = {},
+	} :: Type
+
+	if not lexer:expect(')') then
+		-- retvalue
+		repeat
+			local name = lexer:expectLiteral() :: string
+			lexer:assert(lexer:expect(':'), "expected :")
+
+			retcode.args[name] = assert(parseType(lexer, types))
+			table.insert(retcode.slots, name)
+
+			lexer:expect(',')
+			lexer:expect(';')
+		until lexer:expect(')')
+	end
+	
+	return retcode
+end
 
 local function parseBaseType(lexer: Lexer, types: TypeDatabase): Type
 	if lexer:expect('{') then
@@ -50,48 +75,20 @@ local function parseBaseType(lexer: Lexer, types: TypeDatabase): Type
 		}
 	elseif lexer:expect('(') then
 		-- `(` arglist `)` -> `(` retValue `)`
-		local arglist = {} :: { [string]: Type }
-		local slots = {}
-		if not lexer:expect(')') then
-			-- arglist
-			repeat
-				local name = lexer:expectLiteral() :: string
-				lexer:assert(lexer:expect(':'), "expected :")
-				arglist[name] = assert(parseType(lexer, types))
-				table.insert(slots, name)
-				
-				lexer:expect(',')
-				lexer:expect(';')
-			until lexer:expect(')')
-		end
+		local list = { parseList(lexer, types) }
 		
 		-- arrow
 		lexer:assert(lexer:expect('->'), "expected ->")
 		
 		-- return
 		lexer:assert(lexer:expect('('), "expected ret")
-
-		local retcode = #slots
-		if not lexer:expect(')') then
-			-- retvalue
-			repeat
-				local name = lexer:expectLiteral() :: string
-				lexer:assert(lexer:expect(':'), "expected :")
-				arglist[name] = assert(parseType(lexer, types))
-				table.insert(slots, name)
-				
-				lexer:expect(',')
-				lexer:expect(';')
-			until lexer:expect(')')
-		end
+		table.insert(list, parseList(lexer, types))
 		
 		return {
 			kind = "function",
 			name = "function",
-			args = arglist,
-			
-			retcode = retcode,
-			slots = slots,
+			list = list,
+			args = {},
 		}
 	else
 		local what = lexer:consume() :: string

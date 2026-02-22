@@ -37,7 +37,7 @@ local function konsoleInterpret(src: string, env: any)
 				return false
 			end
 			
-			return env[literal] or literal
+			return literal
 		end,
 
 		handleNumber = function(state: Environment, literal: any)
@@ -57,8 +57,11 @@ local function konsoleInterpret(src: string, env: any)
 		end,
 
 		handleCall = function(state: Environment, base: any, args: { any })
-			local a = base(table.unpack(args))
-			return a
+			return base(table.unpack(args))
+		end,
+		
+		handleGlobal = function(state: Environment, name: string)
+			return env[name]
 		end,
 
 		handleAssign = function(state: Environment, base: any, key: any, value: any)
