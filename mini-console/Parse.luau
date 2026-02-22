@@ -168,7 +168,7 @@ function parseStatement(env: Environment, lexer: Lexer): any
 	return expression
 end
 
-local function parseKonsole(lexer: Lexer, env: Environment): any
+local function parse(lexer: Lexer, env: Environment): any
 	local output
 	while not lexer:eof() do
 		output = parseStatement(env, lexer)
@@ -177,4 +177,4 @@ local function parseKonsole(lexer: Lexer, env: Environment): any
 	return output
 end
 
-return parseKonsole
+return parse

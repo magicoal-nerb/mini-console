@@ -23,7 +23,7 @@ local OPS = {
 
 type Environment = Parse.Environment
 
-local function konsoleInterpret(src: string, env: any)
+local function interpret(src: string, env: any)
 	local lexer = Lexer(src)
 	return Parse(lexer, {
 		env = env,
@@ -74,4 +74,4 @@ local function konsoleInterpret(src: string, env: any)
 	})
 end
 
-return konsoleInterpret
+return interpret
