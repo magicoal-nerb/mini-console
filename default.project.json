@@ -1,6 +1,19 @@
 {
   "name": "mini-console",
   "tree": {
-    "$path": "mini-console"
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
+      "mini-console": {
+        "$path": "mini-console",
+        "$ignoreUnknownInstances": true
+      },
+
+      "Runner" : {
+        "$path": "Runner.server.luau",
+        "$ignoreUnknownInstances": true
+      }
+    }
   }
 }
