@@ -1,8 +1,12 @@
 # mini-console
 debugging console with autocomplete, minimalist lua-like subset
 
-<img width="477" height="67" alt="screenshot in roblox" src="https://github.com/user-attachments/assets/09c9b5fa-02d7-4eca-8211-b91e0a39578a" />
-<img width="428" height="540" alt="tests" src="https://github.com/user-attachments/assets/3b123905-93a4-446c-9d53-bba90f986756" />
+## features
+* can call, set, and inspect members of a provided environment
+* autocomplete is determined with luau types
+* very small footprint
+
+<img width="700" height="134" alt="roblox" src="https://github.com/user-attachments/assets/f2838128-fe8d-4071-b225-b5aad0acc974" />
 
 ## todo
 * better UX with tab completion, should be pretty simple to implement.
