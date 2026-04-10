@@ -68,7 +68,7 @@ Kind = {
 	end,
 }
 
-local function konsoleAutocomplete(
+local function autocomplete(
 	src: string,
 	env: Type
 ): string
@@ -133,4 +133,4 @@ local function konsoleAutocomplete(
 	return Kind[typ.kind](typ) or "<error type>"
 end
 
-return konsoleAutocomplete
+return autocomplete
