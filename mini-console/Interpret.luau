@@ -21,13 +21,13 @@ local OPS = {
 	['and'] = function(a: any, b: any) return a and b end,
 }
 
-type Environment = Parse.Environment
+type Environment = Parse.Environment<any>
 
 local function interpret(src: string, env: any)
 	local lexer = Lexer(src)
 	return Parse(lexer, {
 		env = env,
-		
+
 		handleLiteral = function(state: Environment, literal: any)
 			if literal == "nil" then
 				return nil
@@ -36,7 +36,7 @@ local function interpret(src: string, env: any)
 			elseif literal == "false" then
 				return false
 			end
-			
+
 			return literal
 		end,
 
@@ -46,6 +46,10 @@ local function interpret(src: string, env: any)
 
 		handleUnary = function(state: Environment, what: any)
 			return -what
+		end,
+		
+		handleNot = function(state: Environment, what: any)
+			return not what
 		end,
 
 		handleBinary = function(state: Environment, op: string, left: any, right: any)
@@ -59,19 +63,21 @@ local function interpret(src: string, env: any)
 		handleCall = function(state: Environment, base: any, args: { any })
 			return base(table.unpack(args))
 		end,
-		
+
 		handleGlobal = function(state: Environment, name: string)
 			return env[name]
 		end,
 
 		handleAssign = function(state: Environment, base: any, key: any, value: any)
-			base[key] = value	
+			base[key] = value
+			return nil
 		end,
 
 		handleGlobalAssign = function(state: any, key: any, value: any)
 			state.env[key] = value
+			return nil
 		end,
-	})
+	} :: Environment)
 end
 
 return interpret

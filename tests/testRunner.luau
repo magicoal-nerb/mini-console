@@ -25,7 +25,7 @@ end
 
 local function expect(expr, what)
 	if expr ~= what then
-		error(string.format("expected: %s, got %s", what, expr))
+		error(`expected: {what}, got {expr}`)
 	end
 end
 
@@ -78,6 +78,21 @@ describe("Interpretor", function()
 		
 		interpret("f().x.y.z = hi", {f = function() return chain end})
 		expect(chain.x.y.z, "hi")
+	end)
+
+	it("should handle stacked nots", function()
+		local x = false
+		interpret("f(not not not not true)", {f = function(y) x = y end})
+		expect(x, true)
+
+		interpret("f(not not (not not true))", {f = function(y) x = y end})
+		expect(x, true)
+	end)
+
+	it("should handle paranthesees", function()
+		local x = false
+		interpret("f((x + 3) - 2)", {x = 3, f = function(y) x = y end})
+		expect(x, 4)
 	end)
 	
 	it("should set globals", function()

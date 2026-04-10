@@ -69,9 +69,13 @@ end
 
 function Lexer.assert(self: Lexer, expr: boolean, what: string)
 	-- for handling errors
-	if not expr then
-		error(`current lexeme: {self.lexemes[self.cursor]}; {what}`)
+	if expr then
+		return
 	end
+	
+	-- backtrack please
+	print(self.cursor)
+	error(`current lexeme: {self.lexemes[self.cursor]}; {what}`)
 end
 
 function Lexer.expect(self: Lexer, what: string): boolean
@@ -131,7 +135,7 @@ function Lexer.peek(self: Lexer): string
 	return self.lexemes[self.cursor + 1]
 end
 
-local function createLexer(content: string)
+local function lexer(content: string)
 	local data = buffer.fromstring(content)
 	local length = buffer.len(data)
 	local cursor = 0
@@ -151,12 +155,12 @@ local function createLexer(content: string)
 			while cursor < length and buffer.readu8(data, cursor) ~= string.byte('"') do
 				cursor += 1
 			end
-			
+
 			if start == cursor then
 				-- end of file
 				break
 			end
-			
+
 			table.insert(lexemes, content:sub(start + 1, cursor))
 			cursor += 1
 		elseif isNumeric(byte) then
@@ -173,14 +177,14 @@ local function createLexer(content: string)
 			while cursor < length and isAlphanumeric(buffer.readu8(data, cursor)) do
 				cursor += 1
 			end
-			
+
 			table.insert(lexemes, content:sub(start + 1, cursor))
 		else
 			-- only 1 character at a time
 			local after = if cursor < length - 1
 				then buffer.readu8(data, cursor + 1)
 				else 0
-			
+
 			local id = bit32.lshift(after, 8) + byte
 			if SPECIAL[id] then
 				table.insert(lexemes, content:sub(cursor + 1, cursor + 2))
@@ -195,4 +199,4 @@ local function createLexer(content: string)
 	return Lexer.new(lexemes)
 end
 
-return createLexer
+return lexer

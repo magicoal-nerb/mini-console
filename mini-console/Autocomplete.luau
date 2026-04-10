@@ -5,8 +5,14 @@ local Lexer = require("./Lexer")
 local Types = require("./Types")
 
 type TypeDatabase = Types.TypeDatabase
-type Environment = Parse.Environment
+type Environment = Parse.Environment<Type>
 type Type = Types.Type
+
+local BoolType = {
+	kind = "builtin",
+	name = "boolean",
+	args = {},
+} :: Type
 
 local NumberType = {
 	kind = "builtin",
@@ -30,7 +36,7 @@ Kind = {
 
 		return `\{ {table.concat(fill,', ')} \}`
 	end,
-	
+
 	["list"] = function(kind: Type)
 		local fill: { string } = {}
 		for i, name in assert(kind.slots) do
@@ -63,7 +69,7 @@ Kind = {
 		local list = assert(kind.list)
 		local funcArgs = list[1]
 		local funcRets = list[2]
-		
+
 		return `{Kind.list(funcArgs)} -> {Kind.list(funcRets)}`
 	end,
 }
@@ -75,7 +81,7 @@ local function autocomplete(
 	local lexer = Lexer(src)
 	local typ: Type = Parse(lexer, {
 		handleLiteral = function(state: Environment, literal: any)
-			return nil -- StringType
+			return nil :: any
 		end,
 
 		handleNumber = function(state: Environment, literal: any)
@@ -88,6 +94,10 @@ local function autocomplete(
 
 		handleBinary = function(state: Environment, op: string, left: any, right: any): any
 			return right
+		end,
+		
+		handleNot = function(state: Environment, base: Type): Type
+			return BoolType
 		end,
 
 		handleProp = function(state: Environment, base: Type, key: string): any
@@ -104,11 +114,11 @@ local function autocomplete(
 			elseif base.kind ~= "function" then
 				return
 			end
-			
+
 			local list = assert(base.list)
 			local funcArgs = list[1]
 			local funcRets = list[2]
-			
+
 			local slots = assert(funcArgs.slots)
 			if #slots >= #args and complete then
 				return funcRets
@@ -120,7 +130,7 @@ local function autocomplete(
 		handleAssign = function(state: Environment, base: any, key: any, value: any)
 			return value
 		end,
-		
+
 		handleGlobal = function(state: Environment, key: string)
 			return env.args[key]
 		end,
@@ -128,8 +138,8 @@ local function autocomplete(
 		handleGlobalAssign = function(state: any, key: any, value: any)
 			return value	
 		end,
-	}) or env
-	
+	} :: Environment) or env
+
 	return Kind[typ.kind](typ) or "<error type>"
 end
 
