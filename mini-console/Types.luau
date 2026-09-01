@@ -1,5 +1,7 @@
 --!strict
 
+-- magicoal_nerb :3
+
 local Lexer = require("./Lexer")
 
 type Lexer = Lexer.Lexer
@@ -9,9 +11,9 @@ export type Type = {
 	kind: "table" | "array" | "function" | "builtin" | "union" | "list",
 	args: { [string]: Type },
 	name: string,
-	
+
 	retcode: number?,
-	slots: { string }?,
+	slots: { string },
 	list: { Type }?,
 }
 
@@ -36,7 +38,7 @@ local function parseList(lexer: Lexer, types: TypeDatabase): Type
 			lexer:expect(';')
 		until lexer:expect(')')
 	end
-	
+
 	return retcode
 end
 
@@ -47,23 +49,26 @@ local function parseBaseType(lexer: Lexer, types: TypeDatabase): Type
 			local typ = assert(types[lexer:expectLiteral() :: string])
 			lexer:assert(typ ~= nil, "name expected")
 			lexer:assert(lexer:expect('}'), "expected closing }")
-			
+
 			return {
 				kind = "array",
 				name = `\{ {typ.name} \}`,
 				args = {},
+				slots = {},
 			}
 		end
-		
+
 		-- name `:` parseType
 		local record = {} :: { [string]: Type }
+		local slots = {} :: { string }
 		repeat
 			local name = lexer:expectLiteral() :: string
 			lexer:assert(name ~= nil, "need name")
 			lexer:expect(':')
-			
+
 			record[name] = assert(parseType(lexer, types))
-			
+			table.insert(slots, name)
+
 			lexer:expect(',')
 			lexer:expect(';')
 		until lexer:expect('}')
@@ -71,24 +76,26 @@ local function parseBaseType(lexer: Lexer, types: TypeDatabase): Type
 		return {
 			kind = "table",
 			name = "table",
+			slots = slots,
 			args = record,
 		}
 	elseif lexer:expect('(') then
 		-- `(` arglist `)` -> `(` retValue `)`
 		local list = { parseList(lexer, types) }
-		
+
 		-- arrow
 		lexer:assert(lexer:expect('->'), "expected ->")
-		
+
 		-- return
 		lexer:assert(lexer:expect('('), "expected ret")
 		table.insert(list, parseList(lexer, types))
-		
+
 		return {
 			kind = "function",
 			name = "function",
 			list = list,
 			args = {},
+			slots = {},
 		}
 	else
 		local what = lexer:consume() :: string
@@ -98,9 +105,10 @@ local function parseBaseType(lexer: Lexer, types: TypeDatabase): Type
 			types[what] = {
 				kind = "builtin",
 				name = what,
-				args = { },
+				args = {},
+				slots = {},
 			}
-			
+
 			return types[what]
 		else
 			return types[what]
@@ -125,17 +133,17 @@ function parseType(lexer: Lexer, types: TypeDatabase): Type?
 			name = "union",
 			list = { baseType },
 		} :: Type
-		
+
 		repeat
 			table.insert(
 				unionType.list :: { Type },
 				parseBaseType(lexer, types)
 			)
 		until not lexer:expect('|')
-		
+
 		return unionType
 	end
-	
+
 	return baseType
 end
 
@@ -145,32 +153,36 @@ local function types<T>(src: string): Type
 	local db = {} :: TypeDatabase
 	local root = {
 		kind = "table",
+		slots = {},
 		args = {},
 	} :: Type
-	
+
 	while not lexer:eof() do
 		if lexer:expect("type") then
 			-- name `=` `Type`
 			local name = lexer:expectLiteral() :: string
 			lexer:expect('=')
-			
+
 			local reserved = {} :: Type
 			db[name] = reserved
-			
+
 			move(reserved, parseType(lexer, db))
 			root.args[name] = reserved
+			table.insert(root.slots, name)
 		elseif lexer:isLiteral() then
 			-- name `:` `Type`
 			local name = lexer:expectLiteral() :: string
 			lexer:expect(':')
-			
+
 			db[name] = assert(parseType(lexer, db))
 			root.args[name] = db[name]
+			table.insert(root.slots, name)
 		else
 			lexer:consume()
 		end
+		
 	end
-	
+
 	return root
 end
 

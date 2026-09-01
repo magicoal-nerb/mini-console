@@ -1,5 +1,7 @@
 --!strict
 
+-- magicoal_nerb :3
+
 local WHITESPACE = {
 	[string.byte(' ')] = true,
 	[string.byte('\f')] = true,
@@ -72,7 +74,7 @@ function Lexer.assert(self: Lexer, expr: boolean, what: string)
 	if expr then
 		return
 	end
-	
+
 	-- backtrack please
 	print(self.cursor)
 	error(`current lexeme: {self.lexemes[self.cursor]}; {what}`)
@@ -166,7 +168,7 @@ local function lexer(content: string)
 		elseif isNumeric(byte) then
 			-- keep being numeric
 			local start = cursor
-			while cursor < length and isNumeric(buffer.readu8(data, cursor)) do
+			while cursor < length and isAlphanumeric(buffer.readu8(data, cursor)) do
 				cursor += 1
 			end
 

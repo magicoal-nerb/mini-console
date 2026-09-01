@@ -1,5 +1,7 @@
 --!strict
 
+-- magicoal_nerb :3
+
 local Parse = require("./Parse")
 local Lexer = require("./Lexer")
 
@@ -47,7 +49,7 @@ local function interpret(src: string, env: any)
 		handleUnary = function(state: Environment, what: any)
 			return -what
 		end,
-		
+
 		handleNot = function(state: Environment, what: any)
 			return not what
 		end,

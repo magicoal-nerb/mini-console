@@ -1,5 +1,7 @@
 --!strict
 
+-- magicoal_nerb :3
+
 local Lexer = require("./Lexer")
 
 type Lexer = Lexer.Lexer
@@ -118,7 +120,7 @@ local function parseExpression<T>(env: Environment<T>, lexer: Lexer, maybeLimit:
 	while op and LuaPrecedence[op] > limit do
 		local operator = lexer:consume()
 		local right = parseExpression(env, lexer, LuaPrecedence[op])
-		
+
 		expr = env.handleBinary(env, operator, expr, right :: T)
 		op = parseOperator(lexer)
 	end
@@ -143,6 +145,28 @@ function parseStatement<T>(env: Environment<T>, lexer: Lexer, canAssign: boolean
 
 			expression = env.handleProp(env, expression, index)
 			lexer:expect(']')
+		elseif lexer:expect(':') then
+			previous = expression
+			index = lexer:expectLiteral() :: string
+			expression = env.handleProp(env, expression, index)
+			
+			lexer:expect('(')
+			if lexer:expect(')') then
+				expression = env.handleCall(env, expression, { previous }, true)
+				continue
+			end
+			
+			local args = { previous }
+			repeat
+				table.insert(args, parseStatement(env, lexer, false))
+			until not lexer:expect(',')
+
+			expression = env.handleCall(
+				env,
+				expression,
+				args,
+				lexer:expect(')')
+			)
 		elseif lexer:expect('(') then
 			if lexer:expect(')') then
 				expression = env.handleCall(env, expression, {}, true)
@@ -164,7 +188,7 @@ function parseStatement<T>(env: Environment<T>, lexer: Lexer, canAssign: boolean
 			break
 		end
 	end
-	
+
 	if not canAssign then
 		-- can't assign stuff
 		return expression
